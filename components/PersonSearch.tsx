@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 interface Person {
   name: string;
   phone: string;
+  profession?: string;
 }
 
 export default function PersonSearch() {
@@ -25,11 +26,11 @@ export default function PersonSearch() {
 
       // Mock database of people
       const mockDatabase: Person[] = [
-        { name: "Easy Larry", phone: "(512) 555-1234" },
-        { name: "Sarah Johnson", phone: "(512) 555-5678" },
-        { name: "Michael Brown", phone: "(512) 555-9012" },
-        { name: "Emily Davis", phone: "(512) 555-3456" },
-        { name: "David Wilson", phone: "(512) 555-7890" }
+        { name: "Easy Larry", phone: "(512) 555-1234", profession: "Sales Rep" },
+        { name: "Partson", phone: "(512) 555-5678", profession: "Software Engineer" },
+        { name: "Micah", phone: "(512) 555-9012", profession: "Web Developer" },
+        { name: "Betty", phone: "(512) 555-3456", profession: "Sales" },
+        { name: "David Wilson", phone: "(512) 555-7890", profession: "Lawyer" }
       ];
 
       // Simple search logic
@@ -43,12 +44,12 @@ export default function PersonSearch() {
         // If no exact match, create a new mock person
         const mockPerson: Person = {
           name: name,
-          phone: "(512) 555-" + Math.floor(1000 + Math.random() * 9000)
+          phone: "(512) 555-" + Math.floor(1000 + Math.random() * 9000),
+          profession: "Unknown"
         };
         setPerson(mockPerson);
       }
       
-      toast.success("Person found!");
     } catch (error) {
       toast.error("Failed to fetch person details. Please try again.");
     } finally {
@@ -57,19 +58,25 @@ export default function PersonSearch() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex gap-4">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <form 
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSearch();
+        }}
+        className="flex gap-4"
+      >
         <Input
           placeholder="Enter person's name..."
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="flex-1"
         />
-        <Button onClick={handleSearch} disabled={loading || !name.trim()}>
+        <Button type="submit" disabled={loading || !name.trim()}>
           <Search className="w-4 h-4 mr-2" />
           Search
         </Button>
-      </div>
+      </form>
 
       {person && (
         <Card>
@@ -80,6 +87,9 @@ export default function PersonSearch() {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Name</p>
                   <p className="font-semibold">{person.name}</p>
+                  {person.profession && (
+                    <p className="text-sm text-gray-500">{person.profession}</p>
+                  )}
                 </div>
               </div>
               

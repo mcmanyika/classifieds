@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Business Search',
-  description: 'Search for businesses in Texas',
+  description: 'Search for businesses in Zimbabwe',
 };
 
 export default function RootLayout({

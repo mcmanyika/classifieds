@@ -15,6 +15,7 @@ interface Business {
   address: string;
   phone: string;
   rating: number;
+  userRatingsTotal: number;
   openNow: boolean;
   types: string[];
   placeId: string;
@@ -31,6 +32,7 @@ interface FilterState {
   categories: string[];
   hasWebsite: boolean;
   hasPhone: boolean;
+  hasImage: boolean;
 }
 
 // Add this helper function at the top of your component
@@ -59,7 +61,10 @@ export default function BusinessSearch() {
     categories: [],
     hasWebsite: false,
     hasPhone: false,
+    hasImage: false,
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   // Add this helper function at the top of your component
   const formatWebsiteUrl = (url: string): string | null => {
@@ -76,14 +81,14 @@ export default function BusinessSearch() {
 
   // Function to fetch businesses with pagination
   const fetchBusinesses = (service: google.maps.places.PlacesService, query: string, newSearch: boolean = false) => {
-    // Validate query and add location context
-    const searchQuery = `${query.trim()} in Dallas, TX`;
+    // Update location context for Zimbabwe
+    const searchQuery = `${query.trim()} in Zimbabwe`;
     
     const request: google.maps.places.TextSearchRequest = {
       query: searchQuery,
-      region: 'US',
-      location: new google.maps.LatLng(32.7767, -96.7970), // Dallas coordinates
-      radius: 50000 // 50km radius
+      region: 'ZW', // Zimbabwe region code
+      location: new google.maps.LatLng(-17.8292, 31.0522), // Harare coordinates
+      radius: 500000 // 500km radius to cover Zimbabwe
     };
 
     // Only add pageToken if this is a pagination request
@@ -101,6 +106,7 @@ export default function BusinessSearch() {
           address: place.formatted_address || 'No address available',
           phone: 'Fetching...',
           rating: place.rating || 0,
+          userRatingsTotal: place.user_ratings_total || 0,
           openNow: place.opening_hours?.isOpen() || false,
           types: place.types || [],
           website: 'Fetching...'
@@ -187,8 +193,8 @@ export default function BusinessSearch() {
           // Initialize Places Service
           const mapDiv = document.createElement('div');
           const map = new window.google.maps.Map(mapDiv, {
-            center: { lat: 32.7767, lng: -96.7970 },
-            zoom: 12,
+            center: { lat: -17.8292, lng: 31.0522 }, // Harare coordinates
+            zoom: 7,
           });
           const service = new window.google.maps.places.PlacesService(map);
           setPlacesService(service);
@@ -196,15 +202,15 @@ export default function BusinessSearch() {
           // Initialize Autocomplete
           if (inputRef.current && !autoCompleteRef.current) {
             autoCompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
-              componentRestrictions: { country: 'us' },
+              componentRestrictions: { country: 'zw' },
               fields: ['formatted_address', 'geometry', 'name', 'place_id'],
               bounds: {
-                north: 33.0369,
-                south: 32.6136,
-                east: -96.5616,
-                west: -97.0315
+                north: -15.6088,
+                south: -22.4241,
+                east: 33.0563,
+                west: 25.2373
               },
-              strictBounds: false
+              strictBounds: true
             });
 
             autoCompleteRef.current.addListener('place_changed', () => {
@@ -221,7 +227,7 @@ export default function BusinessSearch() {
           autocompleteService.current = new google.maps.places.AutocompleteService();
           
           // Fetch initial results
-          fetchBusinesses(service, 'businesses in Dallas, TX', true);
+          fetchBusinesses(service, 'businesses in Zimbabwe', true);
         } catch (error) {
           console.error("Error initializing services:", error);
           toast.error("Failed to initialize search services");
@@ -247,6 +253,7 @@ export default function BusinessSearch() {
   // Update filter handler to use normalizeString
   const handleFilterChange = useCallback((filters: FilterState) => {
     setCurrentFilters(filters);
+    setCurrentPage(1); // Reset to first page when filters change
     
     const filtered = allBusinesses.filter(business => {
       // Check categories
@@ -275,6 +282,13 @@ export default function BusinessSearch() {
         }
       }
 
+      // Check image
+      if (filters.hasImage) {
+        if (!business.photoUrl) {
+          return false;
+        }
+      }
+
       return true;
     });
 
@@ -295,6 +309,7 @@ export default function BusinessSearch() {
     setFilteredBusinesses([]);
     setPageToken(null); // Reset pagination
     setHasNextPage(false);
+    setCurrentPage(1); // Reset to first page
     
     try {
       fetchBusinesses(placesService, searchTerm, true);
@@ -332,11 +347,11 @@ export default function BusinessSearch() {
       autocompleteService.current.getPlacePredictions(
         {
           input: value,
-          componentRestrictions: { country: 'us' },
+          componentRestrictions: { country: 'zw' },
           types: ['establishment'],
           locationBias: {
-            center: { lat: 32.7767, lng: -96.7970 }, // Dallas center
-            radius: 50000 // 50km radius
+            center: { lat: -17.8292, lng: 31.0522 }, // Harare center
+            radius: 500000 // 500km radius
           } as google.maps.places.LocationBias
         },
         (predictions, status) => {
@@ -389,12 +404,23 @@ export default function BusinessSearch() {
 
   return (
     <div className="space-y-6">
-      <div ref={searchRef} className="relative">
+      <div className="flex gap-4">
+        <div className='w-1/4'>
+          {/* Add filters */}
+      {allBusinesses.length > 0 && (
+        <BusinessFilters 
+          onFilterChange={handleFilterChange}
+          totalResults={filteredBusinesses.length}
+        />
+      )}
+</div>
+<div className='w-2/4 space-y-6'>
+<div ref={searchRef} className="relative">
         <div className="flex gap-4">
           <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="flex gap-4 w-full">
             <Input
               ref={inputRef}
-              placeholder="Search businesses in Dallas..."
+              placeholder="Search businesses"
               value={searchTerm}
               onChange={handleInputChange}
               onFocus={() => setShowSuggestions(true)}
@@ -426,94 +452,124 @@ export default function BusinessSearch() {
         )}
       </div>
 
-      {/* Add filters */}
-      {allBusinesses.length > 0 && (
-        <BusinessFilters 
-          onFilterChange={handleFilterChange}
-          totalResults={filteredBusinesses.length}
-        />
-      )}
-
+      
       {/* Results */}
       <div className="grid gap-4">
-        {filteredBusinesses.map((business, index) => (
-          <Card 
-            key={`${business.placeId}-${index}`}
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => handleBusinessClick(business.placeId)}
-          >
-            <CardContent className="p-6">
-              <div className="flex flex-col gap-4">
-                <h3 className="text-xl font-semibold">{business.name}</h3>
-                
-                {business.types && filterAndFormatCategories(business.types).length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {filterAndFormatCategories(business.types).map((type, typeIndex) => (
-                      <span
-                        key={typeIndex}
-                        className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-xs text-gray-600 dark:text-gray-300 capitalize"
-                      >
-                        {type}
-                      </span>
-                    ))}
-                  </div>
-                )}
+        {filteredBusinesses
+          .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+          .map((business, index) => (
+            <Card 
+              key={`${business.placeId}-${index}`}
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => handleBusinessClick(business.placeId)}
+            >
+              <CardContent className="p-6">
+                <div className="flex flex-col gap-4">
+                  
+                  <div className="flex justify-between gap-6">
+                    <div className="flex-1">
+                    <h3 className="text-xl font-semibold mb-2">{business.name}</h3>
 
-                <div className="flex justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                      <p className="flex items-center">
-                        <MapPin className="w-4 h-4 mr-2" />
-                        {business.address}
-                      </p>
-                      <p className="flex items-center">
-                        <Phone className="w-4 h-4 mr-2" />
-                        {business.phone}
-                      </p>
-                      {business.website && business.website !== 'No website available' && (
-                        <p className="flex items-center">
-                          <Globe className="w-4 h-4 mr-2" />
-                          <a 
-                            href={business.website} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:underline"
-                            onClick={(e) => e.stopPropagation()}
+                    {business.types && filterAndFormatCategories(business.types).length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {filterAndFormatCategories(business.types).map((type, typeIndex) => (
+                          <span
+                            key={typeIndex}
+                            className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-xs text-gray-600 dark:text-gray-300 capitalize"
                           >
-                            {formatWebsiteUrl(business.website) || business.website}
-                          </a>
+                            {type}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                      <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                        <p className="flex items-center">
+                          <MapPin className="w-4 h-4 mr-2" />
+                          {business.address}
                         </p>
+                        <p className="flex items-center">
+                          <Phone className="w-4 h-4 mr-2" />
+                          {business.phone}
+                        </p>
+                        {business.website && business.website !== 'No website available' && (
+                          <p className="flex items-center">
+                            <Globe className="w-4 h-4 mr-2" />
+                            <a 
+                              href={business.website} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {formatWebsiteUrl(business.website) || business.website}
+                            </a>
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-sm text-yellow-400 dark:text-yellow-300">
+                      {business.rating > 0 && (
+                        <>
+                          <span className="font-medium">{business.rating.toFixed(1)}</span>
+                          <span>({business.userRatingsTotal.toLocaleString()} reviews)</span>
+                        </>
                       )}
                     </div>
-                  </div>
-                  
-                  {business.photoUrl && (
-                    <div className="relative w-[200px] h-[150px] flex-shrink-0">
-                      <Image
-                        src={business.photoUrl}
-                        alt={business.name}
-                        fill
-                        className="rounded-lg object-cover"
-                        priority
-                      />
                     </div>
-                  )}
+                    
+                    {business.photoUrl && (
+                      <div className="relative w-[200px] h-[150px] flex-shrink-0">
+                        <Image
+                          src={business.photoUrl}
+                          alt={business.name}
+                          fill
+                          className="rounded-lg object-cover"
+                          priority
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))}
       </div>
 
-      {/* Load More button */}
-      {hasNextPage && !loading && filteredBusinesses.length > 0 && (
-        <div className="text-center">
+      {/* Pagination Controls */}
+      {filteredBusinesses.length > ITEMS_PER_PAGE && (
+        <div className="flex justify-center gap-2 mt-4">
+          <Button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            variant="outline"
+            size="sm"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="flex items-center px-3 py-1 text-sm">
+            Page {currentPage} of {Math.ceil(filteredBusinesses.length / ITEMS_PER_PAGE)}
+          </span>
+          <Button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredBusinesses.length / ITEMS_PER_PAGE)))}
+            disabled={currentPage === Math.ceil(filteredBusinesses.length / ITEMS_PER_PAGE)}
+            variant="outline"
+            size="sm"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* Load More button - only show when on the last page */}
+      {hasNextPage && !loading && filteredBusinesses.length > 0 && 
+        currentPage === Math.ceil(filteredBusinesses.length / ITEMS_PER_PAGE) && (
+        <div className="text-center mt-4">
           <Button
             onClick={() => {
               if (searchTerm.trim()) {
                 fetchBusinesses(placesService!, searchTerm, false);
               } else {
-                fetchBusinesses(placesService!, 'businesses in Dallas, TX', false);
+                fetchBusinesses(placesService!, 'businesses in Zimbabwe', false);
               }
             }}
             disabled={loading}
@@ -529,6 +585,10 @@ export default function BusinessSearch() {
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
         </div>
       )}
+
+</div>
+      </div>
+      
     </div>
   );
 }

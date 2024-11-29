@@ -12,6 +12,7 @@ export interface FilterState {
   categories: string[];
   hasWebsite: boolean;
   hasPhone: boolean;
+  hasImage: boolean;
 }
 
 export default function BusinessFilters({ onFilterChange, totalResults }: BusinessFiltersProps) {
@@ -19,6 +20,7 @@ export default function BusinessFilters({ onFilterChange, totalResults }: Busine
     categories: [],
     hasWebsite: false,
     hasPhone: false,
+    hasImage: false,
   });
 
   const [showFilters, setShowFilters] = useState(true);
@@ -64,6 +66,7 @@ export default function BusinessFilters({ onFilterChange, totalResults }: Busine
       categories: [],
       hasWebsite: false,
       hasPhone: false,
+      hasImage: false,
     });
   };
 
@@ -75,7 +78,7 @@ export default function BusinessFilters({ onFilterChange, totalResults }: Busine
           <p className="text-sm text-gray-500">{totalResults} results</p>
         </div>
         <div className="flex gap-2">
-          {(filters.categories.length > 0 || filters.hasWebsite || filters.hasPhone) && (
+          {(filters.categories.length > 0 || filters.hasWebsite || filters.hasPhone || filters.hasImage) && (
             <Button
               variant="ghost"
               size="sm"
@@ -130,6 +133,13 @@ export default function BusinessFilters({ onFilterChange, totalResults }: Busine
                 onClick={() => toggleFilter('hasPhone')}
               >
                 Has Phone
+              </Button>
+              <Button
+                variant={filters.hasImage ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleFilter('hasImage')}
+              >
+                Has Image
               </Button>
             </div>
           </div>
